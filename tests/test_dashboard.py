@@ -65,7 +65,7 @@ def test_next_run():
 def test_plist_runs_night_under_caffeinate():
     d = schedule.plist_dict(schedule.LABEL, schedule.night_program(), 1)
     assert d["ProgramArguments"][:3] == ["/usr/bin/caffeinate", "-i", "-s"]
-    assert d["ProgramArguments"][-1] == "night"
+    assert d["ProgramArguments"][-2:] == ["night", "--scheduled"]
     assert d["StartCalendarInterval"] == {"Hour": 1, "Minute": 0}
 
 
@@ -138,3 +138,12 @@ def test_actions_report_errors_cleanly(server):
     headers = {"X-Chaos": "1", "Content-Type": "application/json"}
     code, body = fetch(server + "/api/stop", method="POST", headers=headers, body=b"{}")
     assert code == 400 and json.loads(body)["error"] == "Nothing is running."
+
+
+def test_scheduled_runs_only_start_near_the_start_hour():
+    w = schedule.in_start_window
+    assert w(1, datetime(2026, 10, 7, 1, 0))  # right on time
+    assert w(1, datetime(2026, 10, 7, 2, 15))  # a bit late is fine
+    assert not w(1, datetime(2026, 10, 7, 8, 45))  # woke up for breakfast: skip
+    assert not w(1, datetime(2026, 10, 7, 0, 59))  # just before: that's yesterday's slot
+    assert w(23, datetime(2026, 10, 7, 0, 10))  # windows that cross midnight

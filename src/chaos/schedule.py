@@ -23,6 +23,9 @@ from chaos import config
 
 LABEL = "com.pure-awesome-chaos.nightly"
 START_HOUR = int(os.environ.get("CHAOS_START_HOUR", "1"))
+# If the Mac was asleep at the start time, launchd runs the job as soon as it wakes,
+# which could be 9am when you sit down. Scheduled runs only start inside this window.
+START_WINDOW_MIN = 90
 WAKE_DAYS = "MTWRFSU"  # pmset's day letters: Mon Tue Wed thuRsday Fri Sat sUnday
 LAUNCHD_LOG = config.ROOT / "logs" / "launchd.log"
 
@@ -45,7 +48,7 @@ def _service(label: str) -> str:
 def night_program() -> list[str]:
     # caffeinate runs the command and keeps the Mac awake until it exits:
     #   -i  don't idle-sleep    -s  don't system-sleep (while plugged in)
-    return ["/usr/bin/caffeinate", "-i", "-s", str(config.ROOT / ".venv" / "bin" / "chaos"), "night"]
+    return ["/usr/bin/caffeinate", "-i", "-s", str(config.ROOT / ".venv" / "bin" / "chaos"), "night", "--scheduled"]
 
 
 def plist_dict(label: str, program: list[str], hour: int) -> dict:
@@ -85,6 +88,15 @@ def next_run(hour: int = START_HOUR, now: datetime | None = None) -> datetime:
     now = now or datetime.now()
     run = now.replace(hour=hour, minute=0, second=0, microsecond=0)
     return run if run > now else run + timedelta(days=1)
+
+
+def in_start_window(hour: int = START_HOUR, now: datetime | None = None, window_min: int = START_WINDOW_MIN) -> bool:
+    """Is it within `window_min` minutes after the most recent hour:00?"""
+    now = now or datetime.now()
+    last = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if last > now:
+        last -= timedelta(days=1)
+    return now - last < timedelta(minutes=window_min)
 
 
 # --- 2. pmset: wake the Mac up for it ---

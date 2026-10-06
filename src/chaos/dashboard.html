@@ -135,7 +135,7 @@ a { color: var(--accent); }
         <summary>What this switch does</summary>
         <p>macOS has a built-in job scheduler called <strong>launchd</strong>. Turning this on writes a small settings file (a "LaunchAgent") that says "run this command at 1:00 AM every day", then tells launchd to load it. It runs as you, so no password is needed. Turning it off unloads the job and deletes the file. If a night is running, it stops that too.</p>
         <p>The file: <code id="plist-path"></code></p>
-        <p>The command it runs: <code id="run-command"></code>. <code>caffeinate -i -s</code> keeps the Mac awake for as long as the command runs.</p>
+        <p>The command it runs: <code id="run-command"></code>. <code>caffeinate -i -s</code> keeps the Mac awake for as long as the command runs. <code>--scheduled</code> makes it skip the night if it starts more than 90 minutes late, which happens when the Mac was asleep at 1:00 and macOS runs the missed job on waking.</p>
       </details>
     </div>
 
@@ -311,7 +311,7 @@ function renderControls() {
 
   const notes = [];
   if (S.schedule.on && !S.wake.on && S.sleep_minutes > 0)
-    notes.push(`Your Mac sleeps after ${S.sleep_minutes} minute${S.sleep_minutes === 1 ? "" : "s"} idle. With the wake-up off, tonight's run won't start until something else wakes the Mac.`);
+    notes.push(`Your Mac sleeps after ${S.sleep_minutes} minute${S.sleep_minutes === 1 ? "" : "s"} idle. With the wake-up off, tonight's run only happens if the Mac is already awake at ${hourLabel(S.start_hour)}. Otherwise it's skipped (it won't start late when you wake the Mac in the morning).`);
   if (!S.schedule.on && S.wake.on)
     notes.push("The Mac will still wake up every night, but nothing will run. Turn the wake-up off too if you're pausing for a while.");
   if (S.schedule.on && S.server && !S.server.up)

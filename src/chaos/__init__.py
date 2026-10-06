@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -13,6 +14,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     night = sub.add_parser("night", help="run one night now")
     night.add_argument("--hours", type=float, help="how long the night lasts (default: CHAOS_HOURS or 5.5)")
+    night.add_argument("--scheduled", action="store_true", help=argparse.SUPPRESS)  # set by launchd
     sub.add_parser("dice", help="roll tonight's ingredients (just for fun)")
     sub.add_parser("selftest", help="check the model server and prove the sandbox holds")
     sub.add_parser("gallery", help="rebuild gallery/index.html")
@@ -29,7 +31,14 @@ def main() -> None:
     from chaos import config  # after argparse, so --help works without a .env
 
     if args.command == "night":
+        from chaos import schedule
         from chaos.night import run_night
+
+        if args.scheduled and not schedule.in_start_window():
+            # launchd fires missed jobs when the Mac wakes; don't start a "night" at breakfast.
+            print(f"{time.strftime('%Y-%m-%d %H:%M')} skipped: the Mac was asleep at {schedule.START_HOUR}:00 "
+                  "and only woke up now. Turn on the wake-up switch to fix this.", flush=True)
+            sys.exit(0)
 
         night_dir = run_night(args.hours or config.HOURS)
         status = json.loads((night_dir / "night.json").read_text()).get("status")
