@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chaos Control Room</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #faf7f2; --surface: #ffffff; --text: #1d1b19; --muted: #6b655d; --line: #e8e2d8;
+  --accent: #e4572e; --accent-ink: #ffffff; --good: #2e7d4f; --warn: #a15c00; --bad: #b3261e;
+  --chip: #f1ece4; --code: #f4efe7; --track: #d9d2c7; --warn-bg: #fff4e0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141311; --surface: #1d1b19; --text: #f1ece4; --muted: #a39b90; --line: #2f2c28;
+    --accent: #ff7a4d; --accent-ink: #1d1b19; --good: #6fcf97; --warn: #f2b45a; --bad: #ff8a80;
+    --chip: #2a2723; --code: #24211e; --track: #3a3632; --warn-bg: #2e2416;
+  }
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141311; --surface: #1d1b19; --text: #f1ece4; --muted: #a39b90; --line: #2f2c28;
+  --accent: #ff7a4d; --accent-ink: #1d1b19; --good: #6fcf97; --warn: #f2b45a; --bad: #ff8a80;
+  --chip: #2a2723; --code: #24211e; --track: #3a3632; --warn-bg: #2e2416;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+main { max-width: 880px; margin: 0 auto; padding: 32px 16px 80px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.02em; }
+h1 span { color: var(--accent); }
+h1 small { color: var(--muted); font-weight: 500; font-size: 1rem; margin-left: 6px; }
+h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; background: var(--chip); border-radius: 999px; padding: 3px 12px; font-size: 0.85rem; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.good { background: var(--good); } .dot.bad { background: var(--bad); } .dot.live { background: var(--accent); animation: pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
+
+/* hero */
+.hero .state { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.hero .big { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 4px; line-height: 1.2; }
+.hero .sub { color: var(--muted); margin: 0; }
+.hero .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.chip { background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; margin-top: 14px; }
+.bar > div { height: 100%; background: var(--accent); transition: width 0.4s; }
+.now-doing { margin-top: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.82rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* switches */
+.control { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.control:first-of-type { border-top: 0; padding-top: 0; }
+.control .label { font-weight: 600; }
+.control .desc { color: var(--muted); font-size: 0.9rem; grid-column: 1; }
+.control .state-line { font-size: 0.85rem; grid-column: 1 / -1; }
+.switch { grid-row: 1 / span 2; grid-column: 2; align-self: center; width: 52px; height: 30px; border-radius: 15px; border: 0;
+  background: var(--track); position: relative; cursor: pointer; transition: background 0.2s; padding: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: left 0.2s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { left: 25px; }
+.switch:disabled { opacity: 0.5; cursor: not-allowed; }
+.switch.busy { opacity: 0.6; cursor: progress; }
+.switch:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+details { grid-column: 1 / -1; font-size: 0.88rem; }
+summary { cursor: pointer; color: var(--accent); width: fit-content; }
+details p { color: var(--muted); margin: 8px 0; }
+.terms { color: var(--muted); margin: 0 0 8px; padding-left: 18px; }
+.terms li { margin: 3px 0; }
+code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.82rem; }
+code { background: var(--code); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.note { border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; margin-top: 12px; background: var(--warn-bg); color: var(--warn); }
+.note.bad { color: var(--bad); }
+.pending { color: var(--accent); font-weight: 600; }
+
+/* buttons */
+.btn { background: var(--chip); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; font: inherit; font-size: 0.9rem; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: 0.6; cursor: progress; }
+
+/* log */
+pre.log { background: var(--code); border-radius: 10px; padding: 12px; margin: 0; max-height: 380px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.log .err { color: var(--bad); } .log .mark { color: var(--accent); font-weight: 600; }
+
+/* lists */
+.nights { list-style: none; margin: 0; padding: 0; }
+.nights li { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+.nights li:first-child { border-top: 0; padding-top: 0; }
+.nights .date { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.nights .name { font-weight: 600; }
+.nights .meta { color: var(--muted); font-size: 0.85rem; text-align: right; white-space: nowrap; }
+.ok { color: var(--good); } .fail { color: var(--bad); }
+.checks { list-style: none; padding: 0; margin: 12px 0 0; font-size: 0.9rem; }
+.checks li { padding: 2px 0; }
+.lessons { margin: 0; padding-left: 18px; font-size: 0.92rem; }
+.lessons li { margin-bottom: 6px; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.split { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.split h2 { margin: 0; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100% - 32px); background: var(--text); color: var(--bg);
+  padding: 10px 16px; border-radius: 10px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+#toast.show { opacity: 1; }
+@media (max-width: 560px) {
+  .nights li { grid-template-columns: 1fr; gap: 2px; }
+  .nights .meta { text-align: left; }
+  .hero .big { font-size: 1.4rem; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pure Awesome <span>Chaos</span> <small>control room</small></h1>
+    <span class="pill" id="server"><span class="dot"></span>checking model server…</span>
+  </header>
+
+  <section class="card hero" id="hero" aria-live="polite"><p class="muted">Loading…</p></section>
+
+  <section class="card" aria-labelledby="controls-h">
+    <h2 id="controls-h">Tonight</h2>
+
+    <div class="control">
+      <div class="label" id="run-label">Run the nightly build</div>
+      <div class="desc" id="run-desc">Starts at 1:00 AM every night and runs until about 6:30 AM.</div>
+      <button class="switch" id="run-switch" role="switch" aria-checked="false" aria-labelledby="run-label" aria-describedby="run-desc"></button>
+      <div class="state-line" id="run-state"></div>
+      <details>
+        <summary>What this switch does</summary>
+        <p>macOS has a built-in job scheduler called <strong>launchd</strong>. Turning this on writes a small settings file (a "LaunchAgent") that says "run this command at 1:00 AM every day", then tells launchd to load it. It runs as you, so no password is needed. Turning it off unloads the job and deletes the file. If a night is running, it stops that too.</p>
+        <p>The file: <code id="plist-path"></code></p>
+        <p>The command it runs: <code id="run-command"></code>. <code>caffeinate -i -s</code> keeps the Mac awake for as long as the command runs.</p>
+      </details>
+    </div>
+
+    <div class="control">
+      <div class="label" id="wake-label">Wake the Mac for it</div>
+      <div class="desc" id="wake-desc">Your Mac sleeps when idle, and a sleeping Mac can't start the job. This wakes it at the start time.</div>
+      <button class="switch" id="wake-switch" role="switch" aria-checked="false" aria-labelledby="wake-label" aria-describedby="wake-desc"></button>
+      <div class="state-line" id="wake-state"></div>
+      <details>
+        <summary>What this switch does</summary>
+        <p>This changes a <strong>system power setting</strong>, so macOS will show its own password dialog. This page never sees your password.</p>
+        <p>On runs: <code id="wake-on-cmd"></code></p>
+        <ul class="terms">
+          <li><code>sudo</code> run as administrator (that's the password)</li>
+          <li><code>pmset</code> macOS's power manager</li>
+          <li><code>repeat</code> on a weekly schedule, not just once</li>
+          <li><code>wakeorpoweron</code> wake it if asleep, turn it on if off</li>
+          <li><code>MTWRFSU</code> which days: Mon Tue Wed thuRsday Fri Sat sUnday</li>
+          <li><code>01:00:00</code> exactly the start time. Your Mac sleeps after 1 idle minute, so waking any earlier could let it fall back asleep before the job starts.</li>
+        </ul>
+        <p>Off runs: <code id="wake-off-cmd"></code>. macOS keeps only one repeating wake schedule, so this clears it.</p>
+      </details>
+    </div>
+    <div id="advice"></div>
+  </section>
+
+  <section class="card" aria-labelledby="log-h">
+    <div class="split">
+      <h2 id="log-h">Latest night's log</h2>
+      <a id="gallery-link" href="/gallery/index.html" target="_blank" rel="noopener">Open gallery ↗</a>
+    </div>
+    <pre class="log" id="log" tabindex="0" aria-label="Night log">No nights yet.</pre>
+  </section>
+
+  <section class="card" aria-labelledby="nights-h">
+    <h2 id="nights-h">Past nights</h2>
+    <ul class="nights" id="nights"></ul>
+  </section>
+
+  <section class="card" aria-labelledby="health-h">
+    <div class="split">
+      <h2 id="health-h">Health</h2>
+      <button class="btn" id="selftest-btn">Run safety self-test</button>
+    </div>
+    <div id="health"></div>
+    <ul class="checks" id="checks"></ul>
+  </section>
+
+  <section class="card" aria-labelledby="lessons-h">
+    <h2 id="lessons-h">What Chaos has learned</h2>
+    <ul class="lessons" id="lessons"></ul>
+  </section>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+// Everything the model writes (app names, pitches, logs) goes through esc():
+// a model that names its app "<script>..." must not be able to run code here.
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+let S = null;                 // latest status from the server
+const busy = { run: false, wake: false };
+
+async function api(path, body) {
+  const r = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Chaos": "1" },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  return data;
+}
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 5000);
+}
+
+function clock(ts) {
+  return new Date(ts * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+function when(ts) {
+  const d = new Date(ts * 1000), now = new Date();
+  const days = Math.round((new Date(d.toDateString()) - new Date(now.toDateString())) / 86400000);
+  const day = days === 0 ? (d.getHours() < 6 ? "tonight" : "today") : days === 1 && d.getHours() < 6 ? "tonight" : days === 1 ? "tomorrow" : d.toLocaleDateString([], { weekday: "long" });
+  return `${day} at ${clock(ts)}`;
+}
+function duration(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+function hourLabel(h) {
+  return new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function renderHero() {
+  const hero = $("hero"), L = S.latest, now = S.now;
+  if (S.running && L) {
+    const left = (L.started || now) + (L.hours || 0) * 3600 - now;
+    const pct = L.plan_total ? Math.round((100 * L.plan_done) / L.plan_total) : 0;
+    const last = (L.log || []).filter((l) => l.trim()).slice(-1)[0] || "";
+    hero.innerHTML = `
+      <div class="row">
+        <div>
+          <div class="state"><span class="dot live"></span>Building right now</div>
+          <div class="big">${esc(L.name || "Rolling the dice…")}</div>
+          <p class="sub">${esc(L.pitch || "Choosing tonight's app.")}</p>
+        </div>
+        <button class="btn danger" id="stop-btn">Stop tonight's run</button>
+      </div>
+      <div class="stats">
+        <span class="chip">plan ${L.plan_done}/${L.plan_total}</span>
+        <span class="chip">${esc(L.tests || "no tests yet")}</span>
+        <span class="chip">${L.sessions} sessions</span>
+        <span class="chip">started ${clock(L.started)}</span>
+        <span class="chip">${duration(left)} left</span>
+      </div>
+      <div class="bar" aria-hidden="true"><div style="width:${pct}%"></div></div>
+      <div class="now-doing">${esc(last)}</div>`;
+    $("stop-btn").onclick = stop;
+    return;
+  }
+  const wakeOk = S.wake.on && S.wake.matches;
+  if (S.schedule.on) {
+    const at = S.schedule.next_run;
+    const asleepRisk = !wakeOk && S.sleep_minutes > 0;
+    hero.innerHTML = `
+      <div class="state"><span class="dot ${asleepRisk ? "" : "good"}"></span>Scheduled</div>
+      <div class="big">Next run ${esc(when(at))}</div>
+      <p class="sub">In ${duration(at - now)}. ${asleepRisk ? "But the Mac will probably be asleep, so turn on the wake-up below." : "The Mac will wake for it and stay awake until it's done."}</p>`;
+  } else {
+    hero.innerHTML = `
+      <div class="state"><span class="dot"></span>Off</div>
+      <div class="big">Nothing will run tonight</div>
+      <p class="sub">Turn on the nightly build below to start.</p>`;
+  }
+}
+
+function renderControls() {
+  const hour = hourLabel(S.start_hour);
+  const run = $("run-switch"), wake = $("wake-switch");
+
+  run.setAttribute("aria-checked", S.schedule.on);
+  run.classList.toggle("busy", busy.run);
+  run.disabled = busy.run;
+  $("run-desc").textContent = `Starts at ${hour} every night and runs for about 5.5 hours.`;
+  $("run-state").innerHTML = busy.run ? `<span class="pending">Working…</span>`
+    : S.schedule.on ? `<span class="ok">On</span> · next run ${esc(when(S.schedule.next_run))}` : `<span class="muted">Off</span>`;
+  $("plist-path").textContent = S.schedule.plist;
+  $("run-command").textContent = S.schedule.command;
+
+  wake.setAttribute("aria-checked", S.wake.on);
+  wake.classList.toggle("busy", busy.wake);
+  const blocked = S.wake.other_repeating.length > 0;
+  wake.disabled = busy.wake || blocked;
+  $("wake-desc").textContent = `Your Mac sleeps when idle, and a sleeping Mac can't start the job. This wakes it at ${hour}.`;
+  let w;
+  if (busy.wake) w = `<span class="pending">Waiting for you to approve in the macOS password dialog…</span>`;
+  else if (blocked) w = `<span class="fail">Locked:</span> you have other repeating power events (${esc(S.wake.other_repeating.join("; "))}), and changing this would wipe them.`;
+  else if (S.wake.on && !S.wake.matches) w = `<span class="fail">Wrong time:</span> macOS says “${esc(S.wake.description)}”, but the run starts at ${hour}. Switch it off and on again to fix it.`;
+  else if (S.wake.on) w = `<span class="ok">On</span> · macOS says “${esc(S.wake.description)}”`;
+  else w = `<span class="muted">Off</span>`;
+  $("wake-state").innerHTML = w;
+  $("wake-on-cmd").textContent = S.wake.command_on;
+  document.querySelector(".terms li:last-child code").textContent = S.wake.command_on.split(" ").pop();
+  $("wake-off-cmd").textContent = S.wake.command_off;
+
+  const notes = [];
+  if (S.schedule.on && !S.wake.on && S.sleep_minutes > 0)
+    notes.push(`Your Mac sleeps after ${S.sleep_minutes} minute${S.sleep_minutes === 1 ? "" : "s"} idle. With the wake-up off, tonight's run won't start until something else wakes the Mac.`);
+  if (!S.schedule.on && S.wake.on)
+    notes.push("The Mac will still wake up every night, but nothing will run. Turn the wake-up off too if you're pausing for a while.");
+  if (S.schedule.on && S.server && !S.server.up)
+    notes.push("The model server is down right now. The night will fail its preflight unless oMLX is running by then.");
+  $("advice").innerHTML = notes.map((n) => `<div class="note">${esc(n)}</div>`).join("");
+}
+
+function renderLog() {
+  const el = $("log"), L = S.latest;
+  const atBottom = !renderLog.done || el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  if (!L) { el.textContent = "No nights yet."; return; }
+  el.innerHTML = (L.log.length ? L.log : ["(empty)"]).map((line) => {
+    const cls = /FAILED|ERROR|->/.test(line) ? "err" : /===|---|tonight:|retro:|final tests/.test(line) ? "mark" : "";
+    return cls ? `<span class="${cls}">${esc(line)}</span>` : esc(line);
+  }).join("\n");
+  if (atBottom) el.scrollTop = el.scrollHeight;
+  renderLog.done = true;
+  $("gallery-link").href = `/gallery/index.html#${encodeURIComponent(L.dir)}`;
+}
+
+function renderNights() {
+  $("nights").innerHTML = S.nights.length ? S.nights.map((n) => {
+    const tests = n.tests_passed || n.tests_failed
+      ? `<span class="ok">${n.tests_passed}✓</span> <span class="${n.tests_failed ? "fail" : "muted"}">${n.tests_failed}✗</span>` : "";
+    const status = n.status === "done" ? "" : `<span class="${n.status === "running" ? "pending" : "fail"}">${esc(n.status)}</span> · `;
+    return `<li>
+      <span class="date">${esc(n.date)}</span>
+      <span><a class="name" href="/gallery/index.html#${encodeURIComponent(n.dir)}" target="_blank" rel="noopener">${esc(n.name || "(no idea yet)")}</a>
+        ${n.error ? `<br><span class="fail">${esc(n.error)}</span>` : ""}</span>
+      <span class="meta">${status}${tests}${n.fun ? ` · fun ${n.fun}/10` : ""}</span>
+    </li>`;
+  }).join("") : `<li class="muted">No nights yet.</li>`;
+}
+
+function renderHealth() {
+  const s = S.server, pill = $("server");
+  if (!s) return;
+  pill.innerHTML = s.up && s.has_model
+    ? `<span class="dot good"></span>model server up`
+    : `<span class="dot bad"></span>model server ${s.up ? "missing model" : "down"}`;
+  $("health").innerHTML = s.up
+    ? `<p class="muted" style="margin:0">oMLX is serving <strong>${esc(s.models.join(", "))}</strong>. Chaos uses <strong>${esc(s.model)}</strong>.</p>`
+    : `<p class="fail" style="margin:0">Can't reach the model server: ${esc(s.error)}</p>`;
+}
+
+function renderLessons() {
+  $("lessons").innerHTML = S.lessons.length ? S.lessons.map((l) => `<li>${esc(l)}</li>`).join("") : `<li class="muted">Nothing yet.</li>`;
+}
+
+function render() {
+  renderHero(); renderControls(); renderLog(); renderNights(); renderHealth(); renderLessons();
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/status", { cache: "no-store" });
+    S = await r.json();
+    render();
+  } catch {
+    $("server").innerHTML = `<span class="dot bad"></span>dashboard server stopped`;
+  }
+}
+
+async function flip(kind) {
+  if (busy[kind] || !S) return;
+  const on = kind === "run" ? !S.schedule.on : !S.wake.on;
+  if (kind === "run" && !on && S.running && !confirm("A night is running right now. Turning the schedule off will stop it too. Continue?")) return;
+  busy[kind] = true; render();
+  try {
+    S = await api(kind === "run" ? "/api/schedule" : "/api/wake", { on });
+    toast(kind === "run" ? (on ? "Nightly run is on." : "Nightly run is off.") : (on ? "The Mac will wake up for it." : "Nightly wake-up is off."));
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    busy[kind] = false;
+    await refresh();
+  }
+}
+
+async function stop() {
+  if (!confirm("Stop tonight's run? It will save what it has so far.")) return;
+  try { S = await api("/api/stop"); toast("Stopping… it'll save what it has."); } catch (e) { toast(e.message); }
+  refresh();
+}
+
+async function selftest() {
+  const btn = $("selftest-btn");
+  btn.disabled = true; btn.textContent = "Testing…";
+  try {
+    const { results } = await api("/api/selftest");
+    $("checks").innerHTML = results.map((r) => `<li>${r.ok ? `<span class="ok">✓</span>` : `<span class="fail">✗</span>`} ${esc(r.check)}</li>`).join("");
+    toast(results.every((r) => r.ok) ? "All checks pass." : "Some checks failed!");
+  } catch (e) { toast(e.message); }
+  btn.disabled = false; btn.textContent = "Run safety self-test";
+}
+
+$("run-switch").onclick = () => flip("run");
+$("wake-switch").onclick = () => flip("wake");
+$("selftest-btn").onclick = selftest;
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

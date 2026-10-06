@@ -1,0 +1,56 @@
+;; Seatbelt profile for the overnight agent's shell commands.
+;; Everything the model runs via the `run` tool goes through this.
+;;
+;; Params (passed with sandbox-exec -D):
+;;   NIGHT_DIR  tonight's app folder: the only place it can write
+;;   TOOLBOX    the offline toolbox venv (read-only)
+;;   UV_PYTHON  uv's managed Python installs (read-only; the venv links into it)
+;;   HOME_DIR   the real home folder: unreadable except for the paths above
+;;
+;; Rule order matters: when two rules match, the later one wins.
+
+(version 1)
+(allow default)
+
+;; --- No internet. Localhost is fine so apps can serve and test themselves. ---
+;; Careful: `(allow network* (local ip "localhost:*"))` looks harmless but also
+;; matches outbound connections to anywhere (the socket's *local* end is
+;; localhost-ish) — it leaked the internet in testing. Keep these narrow.
+;; DNS (the mDNSResponder unix socket) is blocked too, so no lookups leave
+;; the machine; apps must use 127.0.0.1, not "localhost".
+(deny network*)
+(allow network-bind network-inbound (local ip "localhost:*"))
+(allow network-outbound (remote ip "localhost:*"))
+
+;; --- Writes: tonight's folder and scratch temp dirs only. ---
+(deny file-write*)
+(allow file-write*
+  (subpath (param "NIGHT_DIR"))
+  (subpath "/private/tmp")
+  (subpath "/private/var/folders")
+  (literal "/dev/null")
+  (literal "/dev/zero")
+  (literal "/dev/tty")
+  (regex #"^/dev/fd/"))
+
+;; --- Reads: nothing in your home folder except what it needs. ---
+;; (Metadata stays readable so path resolution works; file contents and
+;; directory listings do not.)
+(deny file-read-data (subpath (param "HOME_DIR")))
+(allow file-read-data
+  (subpath (param "NIGHT_DIR"))
+  (subpath (param "TOOLBOX"))
+  (subpath (param "UV_PYTHON")))
+
+;; --- No escape hatches: launching apps, scripting other apps, privilege. ---
+(deny process-exec
+  (literal "/usr/bin/open")
+  (literal "/usr/bin/osascript")
+  (literal "/usr/bin/sudo")
+  (literal "/bin/launchctl")
+  (literal "/usr/bin/ssh")
+  (literal "/usr/bin/scp")
+  (literal "/usr/bin/pmset")
+  (literal "/usr/sbin/screencapture"))
+(deny appleevent-send)
+(deny signal (target others))

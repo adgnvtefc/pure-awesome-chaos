@@ -1,0 +1,19 @@
+# Python / uv
+__pycache__/
+*.py[oc]
+.venv/
+.pytest_cache/
+
+# Secrets
+.env
+
+# The toolbox venv is rebuilt by scripts/setup_toolbox.sh
+toolbox/.venv/
+
+# Nightly output stays on this Mac: each night's app/ is its own git repo,
+# and the logs contain local paths. memory/ (lessons + idea history) is tracked.
+nights/
+gallery/
+logs/
+
+.DS_Store
