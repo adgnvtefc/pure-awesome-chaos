@@ -2,6 +2,9 @@
 
 Every night, a local model on this Mac Studio invents a weird little app, builds it,
 tests it, and writes down what it learned. You wake up to a gallery.
+# HUMAN NOTE:
+
+This repository is entirely claude-code'd and made just for fun as an exploration of agentic coding capabilities and local AI. 
 
 ## A night
 
